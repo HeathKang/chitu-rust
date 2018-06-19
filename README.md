@@ -1,2 +1,2 @@
 ## chitu
-A data transmitter from redis to influxdb. Often used with Doctopus.
+A data transmitter from redis to influxdb.Often used with Doctopus.
