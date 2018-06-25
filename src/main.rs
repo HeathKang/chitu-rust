@@ -1,8 +1,11 @@
 #[macro_use]
 extern crate influx_db_client;
 extern crate redis;
+
+use std::collections::HashMap;
 use redis::Commands;
-use influx_db_client::{Value, Precision};
+use redis::RedisResult;
+use influx_db_client::{Value, Precision, Error};
 
 // inter layer between redis and influxdb
 struct Transport {
@@ -14,21 +17,21 @@ struct Transport {
 
 
 impl Transport {
-    fn connect_redis(&self) -> redis::Connection{
-        // 
+    // fn connect_redis(&self) -> redis::Connection{
+    //     self.redis.get_connection() 
+    // }
+
+    fn get_redis_data(&self) -> RedisResult<String>{
+        self.redis_connection.blpop("data_queue", 10)
     }
 
-    fn get_redis_data(&self) -> redis::RedisResult{
-        //
-    }
+    // fn unpack_redis_data(data:RedisResult<&str>) -> Msg {
+    //     //
+    // }
 
-    fn unpack_redis_data(data: redis::RedisResult) -> Msg {
-        //
-    }
-
-    fn send_influxdb(&self, msg: Msg, precision: Option<Precision>, rp: Option<&str>) -> Result<(), error::Error> {
-        //
-    }
+    // fn send_influxdb(&self, msg: Msg, precision: Option<Precision>, rp: Option<&str>) -> Result<(), Error> {
+    //     //
+    // }
 }
 
 
@@ -47,14 +50,17 @@ struct Msg {
 fn main() {
     let transport = Transport{
         redis: redis::Client::open("redis://127.0.0.1/").unwrap(),
-        redis_connection: self.get_connection().unwrap,
+        redis_connection: redis::Client::open("redis://127.0.0.1/").unwrap().get_connection().unwrap(),
         influxdb: influx_db_client::Client::default().set_authentication("root", "root"),
-    }
+    };
     // get redis data value
-    let redis_data = transport.get_redis_data().unwrap();
+    loop {
+        let  redis_data = transport.get_redis_data().unwrap();
+        println!("{}",redis_data);
+    }
     // unpack redis data to influxdb format
-    let msg = transport.unpack_redis_data(redis_data);
+    // let msg = transport.unpack_redis_data(redis_data);
     // send data to influxdb
-    let _ = transport.influx_db_client.write_point(msg, Some(Precision::Seconds), None).unwarp;
+    // let _ = transport.influx_db_client.write_point(msg, Some(Precision::Seconds), None).unwarp;
 
 }
