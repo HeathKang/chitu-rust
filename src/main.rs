@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate influx_db_client;
 extern crate redis;
+// extern crate rmp;
 
 use std::collections::HashMap;
 use redis::Commands;
@@ -14,7 +15,6 @@ struct Transport {
     influxdb: influx_db_client::Client,
     // msg: Msg,
 }
-
 
 impl Transport {
     // fn connect_redis(&self) -> redis::Connection{
@@ -46,6 +46,17 @@ struct Msg {
     timestamp: Option<i64>,
 }
 
+enum ValueType {
+    String,
+    i64,
+    HashMap<String, FieldsValueType>
+}
+
+enum FieldsValueType {
+    f32,
+    i32,
+    String,
+}
 
 fn main() {
     let transport = Transport{
@@ -56,6 +67,8 @@ fn main() {
     // get redis data value
     loop {
         let  redis_data = transport.get_redis_data().unwrap();
+        // redis_data is a bunch of msgpack data
+        let 
         println!("{}",redis_data);
     }
     // unpack redis data to influxdb format
