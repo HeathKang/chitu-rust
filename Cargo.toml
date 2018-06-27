@@ -6,4 +6,6 @@ authors = ["heathkang"]
 [dependencies]
 redis = "0.8.0"
 influx_db_client = "^0.3.4"
-# rmp = "^0.8"
+rmp = "^0.8"
+rmp-serialize = "0.8.0"
+rustc-serialize = "0.3"

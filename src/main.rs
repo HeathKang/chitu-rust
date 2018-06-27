@@ -2,11 +2,17 @@
 extern crate influx_db_client;
 extern crate redis;
 // extern crate rmp;
+extern crate rmp_serialize;
+extern crate rustc_serialize;
+
 
 use std::collections::HashMap;
 use redis::Commands;
 use redis::RedisResult;
 use influx_db_client::{Value, Precision, Error};
+use rustc_serialize::Decodable;
+use rmp_serialize::Decoder;
+
 
 // inter layer between redis and influxdb
 struct Transport {
@@ -21,7 +27,7 @@ impl Transport {
     //     self.redis.get_connection() 
     // }
 
-    fn get_redis_data(&self) -> RedisResult<String>{
+    fn get_redis_data(&self) -> RedisResult<Vec<i32>>{
         self.redis_connection.blpop("data_queue", 10)
     }
 
@@ -46,16 +52,18 @@ struct Msg {
     timestamp: Option<i64>,
 }
 
+// redis_msg : HasMmap<String, ValueType>
+
 enum ValueType {
-    String,
-    i64,
-    HashMap<String, FieldsValueType>
+    table_name(String),
+    timestamp(i64),
+    fields(HashMap<String, FieldsValueType>),
 }
 
 enum FieldsValueType {
-    f32,
-    i32,
-    String,
+    status(f32),
+    num(i32),
+    warning(String),
 }
 
 fn main() {
@@ -68,8 +76,9 @@ fn main() {
     loop {
         let  redis_data = transport.get_redis_data().unwrap();
         // redis_data is a bunch of msgpack data
-        let 
-        println!("{}",redis_data);
+        let mut decoder = Decoder::new(redis_data);
+        let data: HashMap<String, ValueType> = Decodable::decode(&mut decoder).unwarp();
+        println!("{}",data);
     }
     // unpack redis data to influxdb format
     // let msg = transport.unpack_redis_data(redis_data);
