@@ -3,12 +3,14 @@ extern crate influx_db_client;
 extern crate redis;
 extern crate rmp;
 extern crate serde;
+extern crate time;
 
 use std::collections::HashMap;
 use redis::Commands;
 use redis::RedisResult;
-use influx_db_client::{Value, Precision, Error};
+use influx_db_client::{Client, Point, Points, Value, Precision, Error};
 use rmp::decode::read_str;
+// use rmp::decode::read_map;
 
 
 
@@ -27,7 +29,7 @@ impl Transport {
     //     self.redis.get_connection() 
     // }
 
-    fn get_redis_data(&self) -> RedisResult<Vec<u8>>{
+    fn get_redis_data(&self) -> RedisResult<HashMap<String, Vec<u8>>>{
         self.redis_connection.blpop("data_queue", 10)
     }
 
@@ -66,6 +68,13 @@ enum FieldsValueType {
     warning(String),
 }
 
+// #[derive(Debug)]
+
+fn timestamp() -> i64 {
+    let time = time::get_time();
+    time.sec
+}
+
 fn main() {
     let transport = Transport{
         redis: redis::Client::open("redis://127.0.0.1/").unwrap(),
@@ -74,13 +83,19 @@ fn main() {
     };
     // get redis data value
     // loop {
-    let  redis_data = transport.get_redis_data().unwrap();
-    // redis_data is a bunch of msgpack data
-    println!("{:?}", redis_data);
-    // let mut out = [0u8;30];
+    
+    // fetch_redis_data(&transport);
 
-    // let read_str = read_str(&mut &redis_data, &mut &mut out).unwrap();
-    // println!("{}", read_str)
+
+    
+    let timestamp = timestamp();
+    let mut point = Point::new("test")
+            .add_tag("eqpt_no", Value::String(String::from("PEC0-1900")))
+            .add_field("data", Value::String(String::from("test data")))
+            .add_timestamp(timestamp)
+            .to_owned();
+    
+    send_data_to_influxdb(&transport, point);
         
         
     // }
@@ -90,3 +105,24 @@ fn main() {
     // let _ = transport.influx_db_client.write_point(msg, Some(Precision::Seconds), None).unwarp;
 
 }
+
+fn fetch_redis_data(transport:&Transport) {
+    let mut redis_data = transport.get_redis_data().unwrap();
+    // redis_data is a bunch of msgpack data
+    println!("{:?}", redis_data);
+    let mut out = [0u8;30];
+    // println!("{:?}", redis_data.as_bytes());
+    let key = "data_queue";
+    let mut data = redis_data.get(key).unwrap();
+    println!("{:?}", data);
+
+    // let data = [0xaa, 0x6c, 0x65, 0x20, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65];
+    let read_str = read_str(&mut &data[..], &mut out);
+    println!("{}", read_str.unwrap())
+}
+
+fn send_data_to_influxdb(transport:&Transport, point:Point) {
+    let _ = transport.influxdb.write_point(point, Some(Precision::Seconds), None).unwrap();
+
+}
+
