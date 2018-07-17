@@ -2,17 +2,23 @@
 extern crate influx_db_client;
 extern crate redis;
 extern crate rmp;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde;
 extern crate time;
+extern crate log;
+extern crate rmp_serde as rmps;
 
 use std::collections::HashMap;
 use redis::Commands;
 use redis::RedisResult;
 use influx_db_client::{Client, Point, Points, Value, Precision, Error};
-use rmp::decode::read_str;
+// use rmp::decode::read_str;
+#[macro_use]
+use serde::{Deserialize, Serialize};
+use rmps::{Deserializer, Serializer};
+use rmps::{decode};
 // use rmp::decode::read_map;
-
-
 
 
 
@@ -23,6 +29,42 @@ struct Transport {
     influxdb: influx_db_client::Client,
     // msg: Msg,
 }
+#[derive(Debug, PartialEq, Deserialize, Serialize)]
+struct redis_data {
+    timestamp: i64,
+    table_name: String,
+    fields: Vec<u8>,
+
+}
+
+// #[derive(Debug, PartialEq, Deserialize, Serialize)]
+// struct Msg {
+//     // measurement
+//     meaurement: String,
+//     // tags
+//     tags: HashMap<String, Value>,
+//     // fields
+//     fields: HashMap<String, Value>,
+
+// }
+
+// // redis_msg : HasMmap<String, ValueType>
+#[derive(Debug, PartialEq, Deserialize, Serialize)]
+enum ValueType {
+    table_name(String),
+    timestamp(i64),
+    fields(HashMap<String, FieldsValueType>),
+    heartbeat(bool),
+}
+
+#[derive(Debug, PartialEq, Deserialize, Serialize)]
+enum FieldsValueType {
+    status(f32),
+    num(i32),
+    warning(String),
+    tags(HashMap<String, String>),
+}
+
 
 impl Transport {
     // fn connect_redis(&self) -> redis::Connection{
@@ -43,30 +85,10 @@ impl Transport {
 }
 
 
-struct Msg {
-    // measurement
-    meaurement: String,
-    // tags
-    tags: HashMap<String, Value>,
-    // fields
-    fields: HashMap<String, Value>,
-    // timestamp
-    timestamp: Option<i64>,
-}
 
-// redis_msg : HasMmap<String, ValueType>
 
-enum ValueType {
-    table_name(String),
-    timestamp(i64),
-    fields(HashMap<String, FieldsValueType>),
-}
 
-enum FieldsValueType {
-    status(f32),
-    num(i32),
-    warning(String),
-}
+
 
 // #[derive(Debug)]
 
@@ -84,18 +106,18 @@ fn main() {
     // get redis data value
     // loop {
     
-    // fetch_redis_data(&transport);
+    fetch_redis_data(&transport);
 
 
     
-    let timestamp = timestamp();
-    let mut point = Point::new("test")
-            .add_tag("eqpt_no", Value::String(String::from("PEC0-1900")))
-            .add_field("data", Value::String(String::from("test data")))
-            .add_timestamp(timestamp)
-            .to_owned();
+    // let timestamp = timestamp();
+    // let mut point = Point::new("test")
+    //         .add_tag("eqpt_no", Value::String(String::from("PEC0-1900")))
+    //         .add_field("data", Value::String(String::from("test data")))
+    //         .add_timestamp(timestamp)
+    //         .to_owned();
     
-    send_data_to_influxdb(&transport, point);
+    // send_data_to_influxdb(&transport, point);
         
         
     // }
@@ -117,8 +139,12 @@ fn fetch_redis_data(transport:&Transport) {
     println!("{:?}", data);
 
     // let data = [0xaa, 0x6c, 0x65, 0x20, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65];
-    let read_str = read_str(&mut &data[..], &mut out);
-    println!("{}", read_str.unwrap())
+    // let read_str = read_str(&mut &data[..], &mut out);
+    // println!("{}", read_str.unwrap())
+    let mut de = Deserializer::new(&data[..]);
+    let data_1:HashMap<String, String> = Deserialize::deserialize(&mut de).unwrap();
+    println!("{:?}", data_1);
+
 }
 
 fn send_data_to_influxdb(transport:&Transport, point:Point) {
